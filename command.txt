@@ -1,0 +1,248 @@
+// l2sw
+en 
+conf t 
+
+hostname F4-SVR-SW
+banner motd #This is FLOOR-4-SVR-SW#
+line console 0 
+pass 123
+login 
+exit 
+
+line vty 0 15
+password 123
+login 
+exit 
+
+
+no ip domain-lookup
+enable password 123
+service password-encryption
+
+do wr
+
+
+
+// Layer 3 
+
+en 
+conf t 
+
+hostname F4-L3-SW
+banner motd #This is FLOOR-4-L3-SW#
+line console 0 
+pass 123
+login 
+exit 
+
+ip domain-name cisco.com
+username cisco pass 123 
+crypto key generate rsa 
+1024
+line vty 0 15
+login local
+transport input ssh 
+exit 
+
+
+no ip domain-lookup
+enable password 123
+service password-encryption
+
+do wr
+
+// router
+
+en 
+conf t 
+
+hostname F4-ROUTER
+banner motd #This is FLOOR-4-ROUTER#
+line console 0 
+pass 123
+login 
+exit 
+
+ip domain-name cisco.com
+username cisco pass 123 
+crypto key generate rsa 
+1024
+line vty 0 15
+login local
+transport input ssh 
+exit 
+
+
+no ip domain-lookup
+enable password 123
+service password-encryption
+
+do wr
+
+
+// VLAN switch 
+
+en
+conf t 
+int range fa0/1-2
+switchport mode tr 
+exit 
+vlan 120 
+name Svr
+exit
+int range fa0/3-24
+switchport mode ac
+switchport ac vlan 120 
+
+switchport port-security maximum 2
+
+switchport port-security mac-address sticky 
+switchport port-security violation shutdown 
+
+do wr 
+
+exit 
+
+do show start 
+do sh port-security
+
+
+// l3sw link to l2sw
+en
+conf t
+int range gig1/0/3-8
+sw mo tr 
+ex 
+do wr
+
+// l3sw link to router
+en 
+conf t 
+int range gig1/0/1-2
+no switchport
+do wr
+ex
+
+
+// IP address
+
+// l3sw với router
+
+en 
+conf t 
+int g1/0/1
+ip address 10.10.10.49 255.255.255.252
+exit 
+
+int g1/0/2
+ip address 10.10.10.53 255.255.255.252
+exit
+do wr
+
+// router với router khác và l3sw
+
+en 
+conf t 
+int g0/1
+ip address 10.10.10.2 255.255.255.252
+exit 
+
+int g0/2
+ip address 10.10.10.6 255.255.255.252
+exit
+
+int g0/0
+ip address 10.10.10.29 255.255.255.252
+exit 
+
+int se0/2/0
+ip add 10.10.10.33 255.255.255.252
+clock rate 64000
+exit 
+
+int se0/2/1
+ip add 10.10.10.17 255.255.255.252
+clock rate 64000
+exit 
+
+do wr
+
+
+// OSPF 
+
+//router
+en 
+conf t 
+router ospf 10
+network 10.10.10.20 0.0.0.3 area 0 
+network 10.10.10.32 0.0.0.3 area 0 
+network 10.10.10.36 0.0.0.3 area 0
+network 10.10.10.40 0.0.0.3 area 0 
+network 10.10.10.48 0.0.0.3 area 0 
+exit
+
+
+// l3sw
+
+en 
+conf t 
+ip routing 
+router ospf 10
+network 10.10.10.48 0.0.0.3 area 0 
+network 10.10.10.52 0.0.0.3 area 0 
+
+network 192.168.11.128 0.0.0.63 area 0 
+network 192.168.11.192 0.0.0.63 area 0 
+network 192.168.12.0 0.0.0.63 area 0 
+network 192.168.12.64 0.0.0.63 area 0 
+network 192.168.12.128 0.0.0.63 area 0 
+network 192.168.12.192 0.0.0.63 area 0 
+exit
+do wr
+
+
+
+// ip helper addresses
+vlan 70
+vlan 80
+vlan 90
+vlan 100
+vlan 110
+vlan 120
+
+int vlan 70 
+no shutdown
+ip address 192.168.11.129 255.255.255.192
+ip helper-address 192.168.12.196
+exit 
+
+int vlan 80 
+no shutdown
+ip address 192.168.11.193 255.255.255.192
+ip helper-address 192.168.12.196
+exit 
+
+int vlan 90 
+no shutdown
+ip address 192.168.12.1 255.255.255.192
+ip helper-address 192.168.12.196
+exit 
+
+int vlan 100 
+no shutdown
+ip address 192.168.12.65 255.255.255.192
+ip helper-address 192.168.12.196
+exit 
+
+int vlan 110
+no shutdown
+ip address 192.168.12.129 255.255.255.192
+ip helper-address 192.168.12.196
+exit 
+
+int vlan 120 
+no shutdown
+ip address 192.168.12.193 255.255.255.192
+no ip helper-address 192.168.12.196
+exit 
+
